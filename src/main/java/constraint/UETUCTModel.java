@@ -24,23 +24,16 @@ import org.chocosolver.solver.variables.Task;
 
 public class UETUCTModel {
     private final Model model;
-    private final InstanceUETUCT instance;
-    private final IntVar[] starts;
-    private final Task[] tasks;
-    private final BoolVar[][] assignments;
-    private final IntVar makespan;
-    private IntVar[] order;
 
     public UETUCTModel(InstanceUETUCT instance, ConfigurationUETUCT configuration, boolean withDuplication) {
-        this.instance = instance;
         int n = instance.getN();
         int m = instance.getM();
         this.model = new Model();
-        this.starts = model.intVarArray("starts", n, 0, n);
-        this.assignments = model.boolVarMatrix(n, m);
+        IntVar[] starts = model.intVarArray("starts", n, 0, n);
+        BoolVar[][] assignments = model.boolVarMatrix(n, m);
         int maxChain = Arrays.stream(instance.deepestSuccessor()).max().getAsInt();
-        this.makespan = model.intVar("makespan", Math.max((int) Math.ceil(1.0*n/m), maxChain), n);
-        model.max(model.intOffsetView(this.makespan, -1), this.starts).post();
+        IntVar makespan = model.intVar("makespan", Math.max((int) Math.ceil(1.0 * n / m), maxChain), n);
+        model.max(model.intOffsetView(makespan, -1), starts).post();
 
         // each task is assigned to at least one machine
         for(int i = 0; i<n; i++) {
@@ -48,7 +41,7 @@ public class UETUCTModel {
         }
 
         // only one task at a time on each machine
-        this.tasks = new Task[n];
+        Task[] tasks = new Task[n];
         for(int i = 0; i<n; i++) {
             tasks[i] = model.taskVar(starts[i], 1);
         }
@@ -77,11 +70,12 @@ public class UETUCTModel {
             model.sum(assignments[i], ">=", sumDirect).post();
         }
 
+        IntVar[] order = null;
         if(
-            configuration == ConfigurationUETUCT.ORDER
-                || configuration == ConfigurationUETUCT.ORDER_ADAPTED
+            withDuplication && (configuration == ConfigurationUETUCT.ORDER
+                || configuration == ConfigurationUETUCT.ORDER_ADAPTED)
         ) {
-            this.order = model.intVarArray("order", n, 0, n - 1);
+            order = model.intVarArray("order", n, 0, n - 1);
             IntVar[] indexes = model.intVarArray("indexes", order.length, 0, order.length - 1);
             model.post(
                 new Constraint(
@@ -101,14 +95,9 @@ public class UETUCTModel {
                 }
             }
         }
-        setSearch(configuration);
 
-        // set objective as minimizing C
-        model.setObjective(false, makespan);
-    }
-
-    private void setSearch(ConfigurationUETUCT configurationUETUCT) {
-        if (ConfigurationUETUCT.NAIVE == configurationUETUCT) {
+        // set the search
+        if (ConfigurationUETUCT.NAIVE == configuration) {
             ArrayList<IntVar> list = new ArrayList<>();
             for(int i = 0; i < starts.length; i++) {
                 list.add(starts[i]);
@@ -117,7 +106,7 @@ public class UETUCTModel {
             model.getSolver().setSearch(
                 Search.inputOrderLBSearch(list.toArray(new IntVar[0]))
             );
-        } else if (ConfigurationUETUCT.ORDER == configurationUETUCT) {
+        } else if (ConfigurationUETUCT.ORDER == configuration) {
             model.getSolver().setSearch(
                 Search.intVarSearch(
                     new InputOrder<>(model),
@@ -133,7 +122,7 @@ public class UETUCTModel {
                     order
                 )
             );
-        } else if (ConfigurationUETUCT.ORDER_ADAPTED == configurationUETUCT) {
+        } else if (ConfigurationUETUCT.ORDER_ADAPTED == configuration) {
             int[] deepestSuccessor = instance.deepestSuccessor();
             model.getSolver().setSearch(
                 Search.intVarSearch(
@@ -151,8 +140,11 @@ public class UETUCTModel {
                 )
             );
         } else {
-            throw new UnsupportedOperationException("Configuration ("+configurationUETUCT+") not supported for search");
+            throw new UnsupportedOperationException("Configuration ("+configuration+") not supported for search");
         }
+
+        // set objective as minimizing C
+        model.setObjective(false, makespan);
     }
 
     public Model getModel() {

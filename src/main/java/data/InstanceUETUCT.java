@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gnu.trove.list.array.TIntArrayList;
-import java.io.File;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashSet;
@@ -16,8 +15,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 public class InstanceUETUCT {
-    @JsonIgnore
-    private int size;
     private final String name;
     private final int n;
     private final int m;
@@ -33,9 +30,7 @@ public class InstanceUETUCT {
     public InstanceUETUCT(@JsonProperty("name") String name,
         @JsonProperty("n") int n,
         @JsonProperty("m") int m,
-        @JsonProperty("succ") int[][] succ,
-        @JsonProperty("size") int size) {
-        this.size = size;
+        @JsonProperty("succ") int[][] succ) {
         this.name = name;
         this.n = n;
         this.m = m;
@@ -139,20 +134,6 @@ public class InstanceUETUCT {
         return false;
     }
 
-    public int longestPath(int from, int to) {
-        if(from == to) {
-            return 0;
-        } else if(succ[from].length == 0) {
-            return -1;
-        }
-        int max = -1;
-        for(int k = 0; k<succ[from].length; k++) {
-            int lp = longestPath(succ[from][k], to);
-            max = Math.max(max, lp);
-        }
-        return (max == -1 ? -1 : max+1);
-    }
-
     public int[] deepestSuccessor() {
         int[] deepestSuccessor = new int[succ.length];
         int n = succ.length;
@@ -182,41 +163,6 @@ public class InstanceUETUCT {
             }
         }
         return deepestSuccessor;
-    }
-
-    public int[] depth() {
-        int[] depth = new int[n];
-        for(int i = 0; i<depth.length; i++) {
-            for(int k = 0; k<pred[i].length; k++) {
-                depth[i] = Math.max(depth[i], 1 + depth[pred[i][k]]);
-            }
-        }
-        return depth;
-    }
-
-    public void reduce() {
-        int[] depth = depth();
-        TIntArrayList list = new TIntArrayList(n);
-        for(int i = 0; i<n; i++) {
-            list.clear();
-            int[] suci = this.succ[i];
-            for(int j = 0; j<suci.length; j++) {
-                if(depth[suci[j]] - depth[i] == 1) {
-                    list.add(suci[j]);
-                }
-            }
-            this.succ[i] = Arrays.stream(list.toArray()).sorted().toArray();
-        }
-
-        for(int i = 0; i<n; i++) {
-            list.clear();
-            for(int j = i-1; j>=0; j--) {
-                if(Factory.contains(succ[j], i)) {
-                    list.add(j);
-                }
-            }
-            pred[i] = Arrays.stream(list.toArray()).sorted().toArray();
-        }
     }
 
     private int[][] buildAncestors() {
@@ -303,13 +249,5 @@ public class InstanceUETUCT {
             }
         }
         return descendants;
-    }
-
-    public static void main(String[] args) {
-        File[] files = Factory.listAllFiles("data/", ".json", true);
-        for(File file : files) {
-            InstanceUETUCT inst = Factory.fromFile(file.getAbsolutePath(), InstanceUETUCT.class);
-            Factory.toFile(file.getAbsolutePath(), inst);
-        }
     }
 }

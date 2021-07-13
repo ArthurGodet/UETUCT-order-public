@@ -18,6 +18,12 @@ import org.chocosolver.solver.variables.events.IntEventType;
 import org.chocosolver.util.ESat;
 import org.chocosolver.util.tools.ArrayUtils;
 
+/**
+ * Propagator for the Order constraint specified to the UET-UCT, as described in the following thesis :
+ * TODO: add the thesis citation when it is fixed (and/or the CP paper if accepted)
+ *
+ * @author Arthur Godet <arth.godet@gmail.com>
+ */
 public class PropOrderUETUCT extends Propagator<IntVar> {
     private static final int IDLE = -1;
     protected final IntVar[] order;
